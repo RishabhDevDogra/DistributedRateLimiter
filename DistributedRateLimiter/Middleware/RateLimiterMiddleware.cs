@@ -15,9 +15,10 @@ public class RateLimiterMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Example key: IP address
+        // Step 1: get a dynamic key
         var key = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
-        System.Diagnostics.Debugger.Break(); // Breakpoint here
+
+        // Step 2: ask rate limiter
         var allowed = await _rateLimiter.AllowRequestAsync(key);
 
         if (!allowed)
@@ -27,6 +28,8 @@ public class RateLimiterMiddleware
             return;
         }
 
+        // Step 3: continue to next middleware/endpoint
         await _next(context);
     }
+
 }
