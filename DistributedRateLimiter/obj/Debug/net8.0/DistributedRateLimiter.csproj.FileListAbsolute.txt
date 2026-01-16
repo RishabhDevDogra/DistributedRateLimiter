@@ -34,3 +34,4 @@
 /Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/DistributedRateLimiter.pdb
 /Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/DistributedRateLimiter.genruntimeconfig.cache
 /Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/ref/DistributedRateLimiter.dll
+/Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/DistributedRateLimiter.sourcelink.json
