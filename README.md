@@ -29,7 +29,7 @@ A **Redis-backed API rate limiter** built in **.NET 8** that throttles requests 
 
 - **AI-based spike detection not implemented**
 
-Frontend/dashboard for metrics not built
+
 ---
 
 ## ⚡ Getting Started
