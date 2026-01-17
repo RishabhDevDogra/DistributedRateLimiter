@@ -5,28 +5,33 @@ namespace DistributedRateLimiter.Middleware;
 public class RateLimiterMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly IRateLimiter _rateLimiter;
+    private static int _allowed = 0;
+    private static int _blocked = 0;
 
-    public RateLimiterMiddleware(RequestDelegate next, IRateLimiter rateLimiter)
+    public RateLimiterMiddleware(RequestDelegate next)
     {
         _next = next;
-        _rateLimiter = rateLimiter;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task Invoke(HttpContext context, IRateLimiter limiter)
     {
-        // Use IP as key or fallback to user-123
         var key = context.Connection.RemoteIpAddress?.ToString() ?? "user-123";
+        var allowed = await limiter.AllowRequestAsync(key);
 
-        var allowed = await _rateLimiter.AllowRequestAsync(key);
-
-        if (!allowed)
+        if (allowed)
         {
+            Interlocked.Increment(ref _allowed);
+        }
+        else
+        {
+            Interlocked.Increment(ref _blocked);
             context.Response.StatusCode = 429;
-            await context.Response.WriteAsync("Rate limit exceeded ❌");
+            await context.Response.WriteAsync("Rate limit exceeded");
             return;
         }
 
         await _next(context);
     }
+
+    public static (int allowed, int blocked) GetMetrics() => (_allowed, _blocked);
 }

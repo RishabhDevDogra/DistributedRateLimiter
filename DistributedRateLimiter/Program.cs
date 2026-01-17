@@ -33,6 +33,13 @@ app.MapGet("/api/limited", () =>
     return Results.Ok("Request allowed 🚀");
 })
 .WithName("RateLimitedEndpoint");
+// Add this below your other endpoints
+app.MapGet("/api/metrics", () =>
+{
+    var (allowed, blocked) = RateLimiterMiddleware.GetMetrics();
+    return Results.Ok(new { allowed, blocked });
+})
+.WithName("Metrics");
 
 app.Run();
 
