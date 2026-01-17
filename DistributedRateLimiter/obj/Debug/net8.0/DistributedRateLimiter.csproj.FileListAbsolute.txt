@@ -35,3 +35,6 @@
 /Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/DistributedRateLimiter.genruntimeconfig.cache
 /Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/ref/DistributedRateLimiter.dll
 /Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/obj/Debug/net8.0/DistributedRateLimiter.sourcelink.json
+/Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/bin/Debug/net8.0/Pipelines.Sockets.Unofficial.dll
+/Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/bin/Debug/net8.0/StackExchange.Redis.dll
+/Users/rishabh/DistributedRateLimiter/DistributedRateLimiter/bin/Debug/net8.0/System.IO.Hashing.dll

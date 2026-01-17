@@ -15,21 +15,18 @@ public class RateLimiterMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Step 1: get a dynamic key
-        var key = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        // Use IP as key or fallback to user-123
+        var key = context.Connection.RemoteIpAddress?.ToString() ?? "user-123";
 
-        // Step 2: ask rate limiter
         var allowed = await _rateLimiter.AllowRequestAsync(key);
 
         if (!allowed)
         {
             context.Response.StatusCode = 429;
-            await context.Response.WriteAsync("Rate limit exceeded");
+            await context.Response.WriteAsync("Rate limit exceeded ❌");
             return;
         }
 
-        // Step 3: continue to next middleware/endpoint
         await _next(context);
     }
-
 }

@@ -1,14 +1,20 @@
 using DistributedRateLimiter.RateLimiting.Interfaces;
-using DistributedRateLimiter.RateLimiting.InMemory;
+using DistributedRateLimiter.RateLimiting.Redis;
 using DistributedRateLimiter.Middleware;
+using StackExchange.Redis;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<IRateLimiter, InMemoryTokenBucket>();
+// Redis connection
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect("localhost:6379")
+);
 
+// Adding Redis limiter implementation
+builder.Services.AddSingleton<IRateLimiter, RedisTokenBucket>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -21,18 +27,12 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<RateLimiterMiddleware>();
 app.UseHttpsRedirection();
 
-
-// RATE-LIMITED ENDPOINT for demonstration
-
-app.MapGet("/api/limited", async (IRateLimiter rateLimiter) =>
+app.MapGet("/api/limited", () =>
 {
-    var key = "user-123"; // temporary user ID
-    var allowed = await rateLimiter.AllowRequestAsync(key);
-
-    return allowed
-        ? Results.Ok("Request allowed 🚀")
-        : Results.Problem("Rate limit exceeded", statusCode: 429);
+    // Middleware already handled limiting
+    return Results.Ok("Request allowed 🚀");
 })
 .WithName("RateLimitedEndpoint");
+
 app.Run();
 
