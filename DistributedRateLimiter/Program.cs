@@ -27,19 +27,31 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<RateLimiterMiddleware>();
 app.UseHttpsRedirection();
 
+//Rate limited endpoint
 app.MapGet("/api/limited", () =>
 {
     // Middleware already handled limiting
     return Results.Ok("Request allowed 🚀");
 })
 .WithName("RateLimitedEndpoint");
-// Add this below your other endpoints
+// Metrics endpoint
 app.MapGet("/api/metrics", () =>
 {
-    var (allowed, blocked) = RateLimiterMiddleware.GetMetrics();
-    return Results.Ok(new { allowed, blocked });
+    var metrics = RateLimiterMiddleware.GetMetrics();
+
+    var result = metrics.ToDictionary(
+        kvp => kvp.Key,
+        kvp => new
+        {
+            allowed = kvp.Value.allowed,
+            blocked = kvp.Value.blocked
+        }
+    );
+
+    return Results.Ok(result);
 })
 .WithName("Metrics");
+
 
 app.Run();
 
