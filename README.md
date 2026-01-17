@@ -139,9 +139,48 @@ ab -n 1000 -c 10 -v http://localhost:5126/ratelimit | grep "Connect\|Processing\
 
 ---
 
+## 🎯 Scalability & Trade-offs
 
+### Current Scale
+- **Users:** 100 - 10K
+- **Throughput:** 10,000 req/sec per instance
+- **Bottleneck:** Single Redis node (~50K QPS max)
 
-## 📝 License
+### Scaling Strategy
+
+**For 100K Users: Redis Cluster (Sharding)**
+```
+User ID % 5 → Routes to Redis Node 1-5
+Trade-off: If 1 node fails, users on that node use fallback (acceptable)
+```
+
+**For 1M Users: Multi-Region Clusters**
+```
+US → Redis Cluster 1
+EU → Redis Cluster 2  
+APAC → Redis Cluster 3
+Trade-off: User traveling regions loses quota (eventual consistency)
+```
+
+### Trade-offs Explained
+
+| Decision | Chosen | Alternative | Why |
+|----------|--------|-------------|-----|
+| **Per-User Limits** | ✅ Per-user | Global | Fairness: prevents 1 user exhausting all quota |
+| **Redis vs In-Memory** | ✅ Redis + fallback | In-memory only | Accuracy across servers + resilience |
+| **Token Bucket** | ✅ Token bucket | Sliding window | Industry standard (AWS, Stripe), handles bursts |
+| **500ms Timeout** | ✅ 500ms | 100ms or 2000ms | Balance: reliable without hurting UX |
+
+### Interview Question: "Scale to 1M Users?"
+
+**Your Answer:**
+1. **Current (10K):** Single Redis + in-memory works
+2. **100K:** Redis Cluster with sharding by user ID
+3. **1M:** Multi-region clusters (US/EU/APAC)
+4. **Monitoring:** Track fallback rate, Redis latency, per-region throughput
+5. **Optional:** Consistent hashing, CDN edge caching for token counts
+
+---
 
 MIT – Feel free to use for learning and projects
 
