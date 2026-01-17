@@ -69,12 +69,14 @@ public class RedisTokenBucket : IRateLimiter
         return (allowed, tokens);
     }
 
-    public async Task<bool> AllowRequestAsync(string key)
+    public async Task<RateLimitResult> AllowRequestAsync(string key)
     {
         try
         {
-            var (allowed, _) = await AllowRequestWithTokensAsync(key);
-            return allowed;
+            var (allowed, tokens) = await AllowRequestWithTokensAsync(key);
+            var remaining = (int)Math.Max(0, tokens);
+            var resetTime = DateTime.UtcNow.AddSeconds((Capacity - tokens) / RefillRatePerSecond);
+            return new RateLimitResult(allowed, remaining, resetTime);
         }
         catch
         {

@@ -19,21 +19,21 @@ public class FallbackRateLimiter : IRateLimiter
         _logger = logger;
     }
 
-    public async Task<bool> AllowRequestAsync(string key)
+    public async Task<RateLimitResult> AllowRequestAsync(string key)
     {
         // 🔥 Try Redis first if available
         if (RedisHealth.IsAvailable)
         {
             try
             {
-                var allowed = await _redisLimiter.AllowRequestAsync(key);
+                var result = await _redisLimiter.AllowRequestAsync(key);
 
-                if (allowed)
-                    _logger.LogInformation("{Key} -> Allowed (Redis)", key);
+                if (result.Allowed)
+                    _logger.LogInformation("{Key} -> Allowed (Redis) | Remaining: {Remaining}", key, result.Remaining);
                 else
                     _logger.LogInformation("{Key} -> Blocked (Redis)", key);
 
-                return allowed;
+                return result;
             }
             catch
             {
@@ -44,13 +44,13 @@ public class FallbackRateLimiter : IRateLimiter
         }
 
         // 🔥 Redis down → fallback instantly
-        var memAllowed = await _inMemoryLimiter.AllowRequestAsync(key);
+        var memResult = await _inMemoryLimiter.AllowRequestAsync(key);
 
-        if (memAllowed)
-            _logger.LogInformation("{Key} -> Allowed (InMemory)", key);
+        if (memResult.Allowed)
+            _logger.LogInformation("{Key} -> Allowed (InMemory) | Remaining: {Remaining}", key, memResult.Remaining);
         else
             _logger.LogInformation("{Key} -> Blocked (InMemory)", key);
 
-        return memAllowed;
+        return memResult;
     }
 }

@@ -19,9 +19,9 @@ public class RateLimitedController : ControllerBase
     {
         var key = "user-123"; // temporary
 
-        var allowed = await _rateLimiter.AllowRequestAsync(key);
+        var result = await _rateLimiter.AllowRequestAsync(key);
 
-        if (!allowed)
+        if (!result.Allowed)
             return StatusCode(429, "Rate limit exceeded");
 
         return Ok("Request allowed 🚀");

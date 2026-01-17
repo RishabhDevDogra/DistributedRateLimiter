@@ -14,7 +14,7 @@ public class InMemoryTokenBucket : IRateLimiter
         // Logger not needed - FallbackRateLimiter handles all logging
     }
 
-    public Task<bool> AllowRequestAsync(string key)
+    public Task<RateLimitResult> AllowRequestAsync(string key)
     {
         var now = DateTime.UtcNow;
 
@@ -24,7 +24,8 @@ public class InMemoryTokenBucket : IRateLimiter
             {
                 state = new TokenBucketState { Tokens = Capacity - 1, LastRefill = now };
                 _buckets[key] = state;
-                return Task.FromResult(true);
+                var resetTime = now.AddSeconds(1.0 / RefillRatePerSecond);
+                return Task.FromResult(new RateLimitResult(true, (int)Math.Max(0, state.Tokens), resetTime));
             }
 
             var elapsed = (now - state.LastRefill).TotalSeconds;
@@ -33,11 +34,13 @@ public class InMemoryTokenBucket : IRateLimiter
 
             if (state.Tokens < 1)
             {
-                return Task.FromResult(false);
+                var resetTime = now.AddSeconds(1.0 / RefillRatePerSecond);
+                return Task.FromResult(new RateLimitResult(false, 0, resetTime));
             }
 
             state.Tokens -= 1;
-            return Task.FromResult(true);
+            var resetTimeAllowed = now.AddSeconds((Capacity - state.Tokens) / RefillRatePerSecond);
+            return Task.FromResult(new RateLimitResult(true, (int)Math.Max(0, state.Tokens), resetTimeAllowed));
         }
     }
 
