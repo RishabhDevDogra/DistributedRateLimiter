@@ -111,7 +111,8 @@ Run tests: `dotnet test DistributedRateLimiter.Tests`
 
 ---
 
-## 🎯 Interview Discussion Points
+## 🎯 Design & Architecture Considerations
+
 
 1. Token bucket algorithm & parameters
 2. Distributed vs in-memory rate limiting
