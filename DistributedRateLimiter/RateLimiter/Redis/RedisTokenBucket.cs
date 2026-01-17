@@ -1,5 +1,6 @@
 using DistributedRateLimiter.RateLimiting.Interfaces;
 using DistributedRateLimiter.RateLimiting.Fallback;
+
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -20,74 +21,65 @@ public class RedisTokenBucket : IRateLimiter
         _logger = logger;
     }
 
+    // Returns allowed + tokens
+    public async Task<(bool allowed, double tokens)> AllowRequestWithTokensAsync(string key)
+    {
+        var redisKey = $"rate:{key}";
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds(); // seconds for Lua
+
+        var lua = @"
+            local key = KEYS[1]
+            local capacity = tonumber(ARGV[1])
+            local refill = tonumber(ARGV[2])
+            local now = tonumber(ARGV[3])
+
+            local data = redis.call('GET', key)
+            local tokens = capacity
+
+            if data then
+                local decoded = cjson.decode(data)
+                if decoded and decoded.last and decoded.tokens then
+                    local elapsed = now - decoded.last
+                    tokens = math.min(capacity, decoded.tokens + elapsed * refill)
+                end
+            end
+
+            local allowed = 0
+            if tokens >= 1 then
+                tokens = tokens - 1
+                allowed = 1
+            end
+
+            local new_data = cjson.encode({tokens = tokens, last = now})
+            redis.call('SET', key, new_data)
+
+            return {allowed, tokens}
+        ";
+
+        var result = (RedisResult[]?)await _db.ScriptEvaluateAsync(
+            lua,
+            new RedisKey[] { redisKey },
+            new RedisValue[] { Capacity, RefillRatePerSecond, now }
+        );
+
+        bool allowed = (long)result![0] == 1;
+        double tokens = (double)(long)result[1];
+
+        RedisHealth.MarkHealthy();
+        return (allowed, tokens);
+    }
+
     public async Task<bool> AllowRequestAsync(string key)
     {
-        if (!RedisHealth.IsAvailable)
-            throw new Exception("Redis unavailable");
-
-        var redisKey = $"rate:{key}";
-        var now = DateTime.UtcNow;
-
         try
         {
-            var data = await _db.StringGetAsync(redisKey);
-            TokenBucketState state;
-
-            if (string.IsNullOrWhiteSpace(data))
-            {
-                state = new TokenBucketState { Tokens = Capacity - 1, LastRefill = now };
-            }
-            else
-            {
-                state = JsonSerializer.Deserialize<TokenBucketState>(data!) ??
-                        new TokenBucketState { Tokens = Capacity, LastRefill = now };
-
-                var elapsed = (now - state.LastRefill).TotalSeconds;
-                state.Tokens = Math.Min(Capacity, state.Tokens + elapsed * RefillRatePerSecond);
-                state.LastRefill = now;
-
-                if (state.Tokens < 1)
-                {
-                    _ = _db.StringSetAsync(redisKey, JsonSerializer.Serialize(state));
-                    LogColored(key, state.Tokens, false, "Redis");
-                    return false;
-                }
-
-                state.Tokens -= 1;
-            }
-
-            _ = _db.StringSetAsync(redisKey, JsonSerializer.Serialize(state));
-            RedisHealth.MarkHealthy();
-            LogColored(key, state.Tokens, true, "Redis");
-            return true;
+            var (allowed, _) = await AllowRequestWithTokensAsync(key);
+            return allowed;
         }
         catch
         {
-            RedisHealth.MarkFailure();
-            _logger.LogWarning("{Key} -> Redis failed → fallback triggered", key);
+            _logger.LogError("Redis error for key {Key}: Connection issue", key);
             throw;
         }
-    }
-
-    private void LogColored(string key, double tokens, bool allowed, string source)
-    {
-        if (allowed)
-            Console.ForegroundColor = ConsoleColor.Green;
-        else
-            Console.ForegroundColor = ConsoleColor.Red;
-
-        _logger.LogInformation("{Key} -> {Status} ({Source}) Tokens={Tokens:F2}",
-            key,
-            allowed ? "Allowed ✅" : "Blocked ❌",
-            source,
-            tokens);
-
-        Console.ResetColor();
-    }
-
-    private class TokenBucketState
-    {
-        public double Tokens { get; set; }
-        public DateTime LastRefill { get; set; }
     }
 }

@@ -5,14 +5,13 @@ namespace DistributedRateLimiter.RateLimiting.InMemory;
 
 public class InMemoryTokenBucket : IRateLimiter
 {
-    private readonly ILogger<InMemoryTokenBucket> _logger;
     private const int Capacity = 10;
     private const double RefillRatePerSecond = 1;
     private readonly Dictionary<string, TokenBucketState> _buckets = new();
 
     public InMemoryTokenBucket(ILogger<InMemoryTokenBucket> logger)
     {
-        _logger = logger;
+        // Logger not needed - FallbackRateLimiter handles all logging
     }
 
     public Task<bool> AllowRequestAsync(string key)
@@ -25,7 +24,6 @@ public class InMemoryTokenBucket : IRateLimiter
             {
                 state = new TokenBucketState { Tokens = Capacity - 1, LastRefill = now };
                 _buckets[key] = state;
-                LogColored(key, state.Tokens, true, "InMemory");
                 return Task.FromResult(true);
             }
 
@@ -35,30 +33,12 @@ public class InMemoryTokenBucket : IRateLimiter
 
             if (state.Tokens < 1)
             {
-                LogColored(key, state.Tokens, false, "InMemory");
                 return Task.FromResult(false);
             }
 
             state.Tokens -= 1;
-            LogColored(key, state.Tokens, true, "InMemory");
             return Task.FromResult(true);
         }
-    }
-
-    private void LogColored(string key, double tokens, bool allowed, string source)
-    {
-        if (allowed)
-            Console.ForegroundColor = ConsoleColor.Green;
-        else
-            Console.ForegroundColor = ConsoleColor.Red;
-
-        _logger.LogInformation("{Key} -> {Status} ({Source}) Tokens={Tokens:F2}",
-            key,
-            allowed ? "Allowed ✅" : "Blocked ❌",
-            source,
-            tokens);
-
-        Console.ResetColor();
     }
 
     private class TokenBucketState

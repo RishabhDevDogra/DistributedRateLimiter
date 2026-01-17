@@ -11,9 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Redis connection (non-abort, retry automatically)
+// Redis connection (non-abort, retry automatically, fast timeout for quick fallback)
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false")
+    ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false,connectTimeout=500,syncTimeout=500")
 );
 
 // Concrete limiters
@@ -44,14 +44,8 @@ app.UseMiddleware<RateLimiterMiddleware>();
 app.UseHttpsRedirection();
 
 // Rate-limited endpoint
-app.MapGet("/api/limited", async (IRateLimiter limiter, HttpContext ctx) =>
+app.MapGet("/api/limited", () =>
 {
-    // Use remote IP as key
-    var key = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-    var allowed = await limiter.AllowRequestAsync(key);
-
-    if (!allowed) return Results.StatusCode(429); // Too Many Requests
     return Results.Ok("Request allowed 🚀");
 })
 .WithName("RateLimitedEndpoint");

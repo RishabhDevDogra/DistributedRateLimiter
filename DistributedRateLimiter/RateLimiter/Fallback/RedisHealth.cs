@@ -5,9 +5,9 @@ public static class RedisHealth
     private static volatile bool _isAvailable = true;
     private static DateTime _lastFailure = DateTime.MinValue;
 
-    // Redis considered available if healthy OR 10s have passed since last failure
+    // Redis considered available if healthy OR 5s have passed since last failure (retry sooner)
     public static bool IsAvailable =>
-        _isAvailable || DateTime.UtcNow - _lastFailure > TimeSpan.FromSeconds(10);
+        _isAvailable || DateTime.UtcNow - _lastFailure > TimeSpan.FromSeconds(5);
 
     public static void MarkFailure()
     {
