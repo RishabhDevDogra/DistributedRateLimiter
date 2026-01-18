@@ -171,15 +171,6 @@ Trade-off: User traveling regions loses quota (eventual consistency)
 | **Token Bucket** | ✅ Token bucket | Sliding window | Industry standard (AWS, Stripe), handles bursts |
 | **500ms Timeout** | ✅ 500ms | 100ms or 2000ms | Balance: reliable without hurting UX |
 
-### Interview Question: "Scale to 1M Users?"
-
-**Your Answer:**
-1. **Current (10K):** Single Redis + in-memory works
-2. **100K:** Redis Cluster with sharding by user ID
-3. **1M:** Multi-region clusters (US/EU/APAC)
-4. **Monitoring:** Track fallback rate, Redis latency, per-region throughput
-5. **Optional:** Consistent hashing, CDN edge caching for token counts
-
 ---
 
 MIT – Feel free to use for learning and projects
