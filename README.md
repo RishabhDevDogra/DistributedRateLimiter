@@ -645,15 +645,6 @@ Run tests: `dotnet test DistributedRateLimiter.Tests`
 
 ---
 
-## 🔍 Design Decisions
-
-**Why Token Bucket?** Industry standard (AWS, Stripe, GitHub)  
-**Why Redis + In-Memory?** Distributed + resilient with automatic failover  
-**Why 500ms Timeout?** Fast enough for imperceptible user impact  
-**Why Lua Scripts?** Atomic operations prevent race conditions
-
----
-
 ## 📈 Performance Benchmarks
 
 ### Measured Results
