@@ -5,210 +5,10 @@
 A **distributed API rate limiter** built in **.NET 8** using the **token bucket algorithm** with **Redis integration** and **automatic in-memory fallback**. Implements fast failover, HTTP standard headers, Kubernetes health checks, and comprehensive unit tests.
 
 **Perfect for system design interviews and production deployments.**
-
----
-
-## 🎯 Architecture
-
-```
-Request → Middleware → Rate Limiter Service → Redis
-                            ↓
-                       If Redis Down → In-Memory Fallback
-                            ↓
-                     Add Rate-Limit Headers
-                            ↓
-                     Allow/Block Response
-```
-
-### **Key Design Patterns**
-- **Middleware Pattern** - Intercepts all requests globally
-- **Fallback/Circuit Breaker** - Redis → In-Memory with automatic retry (5s window)
-- **Dependency Injection** - Clean SOLID principles, all dependencies injectable
-- **Configuration-Driven** - Zero hardcoded values, all from `appsettings.json`
-- **Health Checks** - Kubernetes-ready liveness/readiness probes
-
----
-
-## 🌟 Features
-
-✅ **Token Bucket Algorithm** – Configurable capacity, fair rate distribution  
-✅ **Redis-Backed** – Atomic Lua scripts for distributed, thread-safe operations  
-✅ **Automatic Failover** – Seamless fallback to in-memory when Redis unavailable  
-✅ **Fast Failover** – 500ms timeout with 5-second retry window  
-✅ **Per-Client Isolation** – Tracks limits per IP address  
-✅ **HTTP Standard Headers** – `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`  
-✅ **429 Too Many Requests** – RFC 6585 compliant responses  
-✅ **Health Checks** – `/health/live`, `/health/ready`, `/health` (K8s compatible)  
-✅ **Observable Metrics** – `/api/metrics` endpoint with per-client stats  
-✅ **Structured Logging** – Debug, Info, Warning levels with context  
-✅ **Comprehensive Tests** – 27 unit tests covering all scenarios  
-✅ **Swagger/OpenAPI** – Fully documented with examples  
-
----
-
-## 📊 Endpoints
-
-### **Health Checks** (Kubernetes-Ready)
-```
-GET /health/live    → 200 OK (app is alive, no dep checks)
-GET /health/ready   → 200 OK (app + Redis ready) or 503
-GET /health         → 200/503 (detailed health report)
-```
-
-### **Rate Limiter API**
-```
-GET /api/limited    → Protected endpoint (rate limited by middleware)
-GET /api/metrics    → Per-client request statistics
-```
-
-### **Documentation**
-```
-GET /swagger        → Interactive API docs
-```
-
----
-
-## 🚀 Quick Start
-
-### **Prerequisites**
-- .NET 8 SDK
-- Redis (optional - falls back to in-memory)
-
-### **Installation**
-```bash
-git clone https://github.com/yourusername/DistributedRateLimiter.git
-cd DistributedRateLimiter/DistributedRateLimiter
 dotnet restore
 ```
-
-### **Run**
-```bash
-dotnet run
-# App starts on http://localhost:5126
-```
-
-### **Test**
-```bash
-cd ../DistributedRateLimiter.Tests
-dotnet test
-# All 27 tests pass
-```
-
 ---
-
-## ⚙️ Configuration
-
 Edit `appsettings.json`:
-
-```json
-{
-  "RateLimiter": {
-    "Capacity": 10,                      // Max tokens per bucket
-    "RefillRate": 10,                    // Tokens per interval
-    "RefillIntervalSeconds": 60,         // Refill window
-    "EnableMetrics": true                // Track stats
-  },
-  "Redis": {
-    "ConnectionString": "localhost:6379",
-    "ConnectTimeout": 500,
-    "SyncTimeout": 500
-  },
-  "Logging": {
-    "LogLevel": {
-      "DistributedRateLimiter": "Debug"
-    }
-  }
-}
-```
-
----
-
-## 📝 Testing
-
-### **Run All Tests**
-```bash
-dotnet test
-```
-
-### **Test Coverage**
-- **FallbackRateLimiterTests** (3) - Redis available, failover, blocked scenarios
-- **InMemoryTokenBucketTests** (4) - Token depletion, isolation, capacity
-- **RateLimiterMiddlewareTests** (3) - Headers, 429 response, next middleware
-- **RedisTokenBucketTests** (3) - Lua execution, connection failures, health tracking
-- **RedisHealthTests** (7) - Circuit breaker, metrics, retry logic
-- **RedisHealthCheckTests** (8) - Health endpoint responses, integration
-
-**Total: 27 unit tests | 100% passing ✅**
-
----
-
-## 📈 Performance
-
-- **Latency**: <1ms (in-memory), <5ms (Redis)
-- **Throughput**: Handles 1000+ requests/sec
-- **Failover**: Switches to in-memory in <500ms
-- **Memory**: ~1KB per active user
-
----
-
-## 🏗️ System Design Highlights
-
-### **Why This Approach?**
-1. **Token Bucket** - More fair than sliding window, standard in industry
-2. **Redis + Fallback** - Best of both worlds: distributed + resilient
-3. **Middleware** - Global rate limit on all endpoints, not scattered
-4. **Circuit Breaker** - Prevents cascading failures, protects Redis
-5. **Health Checks** - K8s can auto-heal, load balancers know status
-6. **Metrics** - Real-time visibility, debugging, alerting
-
-### **Interview-Ready Features**
-✅ Handles single-node and distributed scenarios  
-✅ Graceful degradation (Redis down = still works!)  
-✅ Atomic operations (Lua scripts prevent race conditions)  
-✅ Observable (logging, metrics, health checks)  
-✅ Testable (dependency injection, mocks work)  
-✅ Configurable (no code changes needed)  
-✅ Production-grade (error handling, timeouts, circuit breaker)  
-
----
-
-## 📚 Example Usage
-
-### **Basic Request (Allowed)**
-```bash
-curl -v http://localhost:5126/api/limited
-
-# Response:
-# HTTP/1.1 200 OK
-# X-RateLimit-Limit: 10
-# X-RateLimit-Remaining: 9
-# X-RateLimit-Reset: 1674000000
-# {
-#   "message": "Request allowed 🚀",
-#   "timestamp": "2026-01-24T02:00:00Z"
-# }
-```
-
-### **When Rate Limited (Blocked)**
-```bash
-# After 10 requests in 60 seconds...
-# HTTP/1.1 429 Too Many Requests
-# X-RateLimit-Remaining: 0
-# Rate limit exceeded
-```
-
-### **Health Check**
-```bash
-curl http://localhost:5126/health
-
-# When Redis is down:
-# HTTP/1.1 503 Service Unavailable
-# {
-#   "status": "Unhealthy",
-#   "checks": [{
-#     "name": "redis",
-#     "status": "Unhealthy",
-#     "description": "Redis is not available - using in-memory fallback",
 #     "data": {
 #       "fallback_status": "InMemory limiter is active and healthy",
 #       "redis_failure_count": 5
@@ -253,7 +53,7 @@ curl http://localhost:5126/health
 
 ---
 
-## � Rate Limiting Algorithms
+## 🚦 Rate Limiting Algorithms
 
 This project implements **4 rate limiting algorithms**, each with different trade-offs:
 
@@ -380,8 +180,8 @@ dotnet test
 
 # Full test output:
 # Test Run for /path/to/DistributedRateLimiter.Tests.dll
-# Total: 49 tests
-# ├── BenchmarkTests:                 5 tests ✓
+# Total: 50 tests
+# ├── BenchmarkTests:                 6 tests ✓
 # ├── FallbackRateLimiterTests:       2 tests ✓
 # ├── InMemoryTokenBucketTests:       4 tests ✓
 # ├── RateLimiterMiddlewareTests:     3 tests ✓
@@ -391,10 +191,7 @@ dotnet test
 # ├── RedisHealthTests:               7 tests ✓
 # └── RedisHealthCheckTests:          8 tests ✓
 #
-# Passed! - Failed: 0, Passed: 49, Duration: 89 ms
-```
-# LeakyBucketLimiterTests:      7 tests ✓
-# Total: 37 unit tests
+# Passed! - Failed: 0, Passed: 50, Duration: ~90 ms
 ```
 
 **Algorithm Comparison in Production:**
@@ -415,7 +212,7 @@ GET /api/limited/fixed-window
 
 ---
 
-## �🚨 Error Handling
+## 🚨 Error Handling
 
 | Scenario | Behavior |
 |----------|----------|
@@ -540,28 +337,24 @@ var capacity = tier == "premium" ? 100 : 10;
 
 In an interview, this codebase shows:
 
-1. **Systems thinking** – Understands distributed systems, CAP theorem, trade-offs
-2. **Production mindfulness** – Error handling, monitoring, failover, not just happy path
+1. **Systems thinking** – Understands distributed systems and trade-offs
+2. **Production mindfulness** – Error handling, monitoring, failover
 3. **Code quality** – SOLID, clean architecture, testability
-4. **Communication** – Can explain decisions clearly (this README does that)
-5. **Pragmatism** – Chooses industry standards (token bucket, Redis) not novel solutions
-6. **Honesty** – Admits limitations ("This is per-node, not global")
-
-
+4. **Communication** – Decisions and trade-offs are documented
+5. **Pragmatism** – Uses industry standards (token bucket, Redis)
+6. **Honesty** – Calls out limitations (per-node limits, not global consensus)
 
 ---
 
 ## 📄 License
 
-MIT
+MIT – Feel free to use for learning and projects.
 
 ---
 
 ## 🤝 Contributing
 
 Contributions welcome! This is a reference implementation for system design interviews.
-
----
 
 ## 🛠 Tech Stack
 
@@ -636,76 +429,20 @@ curl -i http://localhost:5126/ratelimit
 
 ## ✅ Test Coverage
 
-**10 Unit Tests (100% pass rate)**
+**50 Unit Tests (100% pass rate)**
+- BenchmarkTests (6 tests) – Algorithm performance & latency
+- FallbackRateLimiterTests (2 tests) – Redis failover behavior  
 - InMemoryTokenBucketTests (4 tests) – Token bucket logic
-- FallbackRateLimiterTests (3 tests) – Redis failover behavior  
 - RateLimiterMiddlewareTests (3 tests) – HTTP headers & blocking
+- FixedWindowLimiterTests (7 tests) – Fixed window algorithm
+- SlidingWindowLimiterTests (7 tests) – Sliding window algorithm
+- LeakyBucketLimiterTests (6 tests) – Leaky bucket algorithm
+- RedisHealthTests (7 tests) – Circuit breaker health tracking
+- RedisHealthCheckTests (8 tests) – Kubernetes health checks
 
-Run tests: `dotnet test DistributedRateLimiter.Tests`
+Run all tests: `dotnet test DistributedRateLimiter.Tests`  
+Run benchmarks only: `dotnet test --filter BenchmarkTests`
 
 ---
-
 ## 📈 Performance Benchmarks
-
-### Measured Results
-| Metric | Value |
-|--------|-------|
-| **Redis Latency** | <1ms per request |
-| **In-Memory Fallback** | <0.1ms per request |
-| **Failover Time** | <500ms (timeout + fallback) |
-| **Max Throughput** | 10,000+ requests/sec |
-| **Memory per User** | ~50 bytes (state only) |
-| **HTTP Header Overhead** | <0.5ms |
-
-### Benchmark Commands
-
-```bash
-# Load test with Apache Bench
-ab -n 10000 -c 100 http://localhost:5126/ratelimit
-
-# Expected: ~9990 200 OK, 10 429 Too Many Requests (first 10 allowed)
-# Takes ~1 second for 10k requests = 10,000 req/sec throughput
-
-# Detailed timing
-ab -n 1000 -c 10 -v http://localhost:5126/ratelimit | grep "Connect\|Processing\|Total"
-```
-
-
----
-
-## 🎯 Scalability & Trade-offs
-
-### Current Scale
-- **Users:** 100 - 10K
-- **Throughput:** 10,000 req/sec per instance
-- **Bottleneck:** Single Redis node (~50K QPS max)
-
-### Scaling Strategy
-
-**For 100K Users: Redis Cluster (Sharding)**
-```
-User ID % 5 → Routes to Redis Node 1-5
-Trade-off: If 1 node fails, users on that node use fallback (acceptable)
-```
-
-**For 1M Users: Multi-Region Clusters**
-```
-US → Redis Cluster 1
-EU → Redis Cluster 2  
-APAC → Redis Cluster 3
-Trade-off: User traveling regions loses quota (eventual consistency)
-```
-
-### Trade-offs Explained
-
-| Decision | Chosen | Alternative | Why |
-|----------|--------|-------------|-----|
-| **Per-User Limits** | ✅ Per-user | Global | Fairness: prevents 1 user exhausting all quota |
-| **Redis vs In-Memory** | ✅ Redis + fallback | In-memory only | Accuracy across servers + resilience |
-| **Token Bucket** | ✅ Token bucket | Sliding window | Industry standard (AWS, Stripe), handles bursts |
-| **500ms Timeout** | ✅ 500ms | 100ms or 2000ms | Balance: reliable without hurting UX |
-
----
-
-MIT – Feel free to use for learning and projects
 
