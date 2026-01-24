@@ -5,19 +5,7 @@
 A **distributed API rate limiter** built in **.NET 8** using the **token bucket algorithm** with **Redis integration** and **automatic in-memory fallback**. Implements fast failover, HTTP standard headers, Kubernetes health checks, and comprehensive unit tests.
 
 **Perfect for system design interviews and production deployments.**
-dotnet restore
-```
----
-Edit `appsettings.json`:
-#     "data": {
-#       "fallback_status": "InMemory limiter is active and healthy",
-#       "redis_failure_count": 5
-#     }
-#   }]
-# }
-```
 
----
 
 ## 🛠️ Tech Stack
 
@@ -29,6 +17,38 @@ Edit `appsettings.json`:
 | **Documentation** | Swagger/OpenAPI |
 | **Logging** | ILogger (Structured Logging) |
 | **Health Checks** | IHealthCheck (Kubernetes compatible) |
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# Clone and enter
+git clone https://github.com/RishabhDevDogra/DistributedRateLimiter.git
+cd DistributedRateLimiter
+
+# Start Redis (macOS)
+brew services start redis
+redis-cli ping
+
+# Run the API
+dotnet run --project DistributedRateLimiter
+
+# Run tests
+dotnet test DistributedRateLimiter.Tests
+```
+
+## 📊 API Usage
+
+```bash
+# Allowed (first 10 requests)
+curl -i http://localhost:5126/ratelimit
+# 200 OK with X-RateLimit-* headers
+
+# Blocked (11th request)
+curl -i http://localhost:5126/ratelimit
+# 429 Too Many Requests
+```
 
 ---
 
@@ -346,137 +366,6 @@ In an interview, this codebase shows:
 
 ---
 
-## 📄 License
-
-MIT – Feel free to use for learning and projects.
-
----
-
-## 🤝 Contributing
-
-Contributions welcome! This is a reference implementation for system design interviews.
-
-## 🛠 Tech Stack
-
-- **.NET 8 / C#** – Modern async/await patterns
-- **Redis (StackExchange.Redis)** – Distributed caching with Lua scripts
-- **xUnit + Moq** – Comprehensive unit test coverage
-- **ASP.NET Core Middleware** – Request filtering and header injection
-- **Dependency Injection** – Clean, testable architecture
-
----
-
-## 📐 Architecture
-
-### Token Bucket Algorithm
-```
-Capacity: 10 tokens
-Refill Rate: 1 token/second
-Response: Block (429) when tokens exhausted
-Reset Time: Automatically calculated per user
-```
-
-### Request Flow
-```
-Request → Middleware → FallbackRateLimiter
-                         ├→ Try Redis (500ms timeout)
-                         │  └→ On success: return RateLimitResult
-                         └→ On Redis failure: Use InMemory fallback
-                            └→ return RateLimitResult
-             ↓
-    Add X-RateLimit-* headers
-             ↓
-    Allow (200) or Block (429)
-```
-
----
-
-## 🚀 Quick Start
-
-### Setup
-
-```bash
-# Clone and setup
-git clone https://github.com/RishabhDevDogra/DistributedRateLimiter.git
-cd DistributedRateLimiter
-
-# Start Redis (macOS)
-brew services start redis
-redis-cli ping
-
-# Run application
-dotnet run --project DistributedRateLimiter
-
-# Run tests
-dotnet test DistributedRateLimiter.Tests
-```
-
----
-
-## 📊 API Usage
-
-```bash
-# Allowed (first 10 requests)
-curl -i http://localhost:5126/ratelimit
-# 200 OK with X-RateLimit-* headers
-
-# Blocked (11th request)
-curl -i http://localhost:5126/ratelimit
-# 429 Too Many Requests
-```
-
----
-
-## ✅ Test Coverage
-
-**50 Unit Tests (100% pass rate)**
-- BenchmarkTests (6 tests) – Algorithm performance & latency
-- FallbackRateLimiterTests (2 tests) – Redis failover behavior  
-- InMemoryTokenBucketTests (4 tests) – Token bucket logic
-- RateLimiterMiddlewareTests (3 tests) – HTTP headers & blocking
-- FixedWindowLimiterTests (7 tests) – Fixed window algorithm
-- SlidingWindowLimiterTests (7 tests) – Sliding window algorithm
-- LeakyBucketLimiterTests (6 tests) – Leaky bucket algorithm
-- RedisHealthTests (7 tests) – Circuit breaker health tracking
-- RedisHealthCheckTests (8 tests) – Kubernetes health checks
-
-Run all tests: `dotnet test DistributedRateLimiter.Tests`  
-Run benchmarks only: `dotnet test --filter BenchmarkTests`
-
----
-## 📈 Performance Benchmarks
-
-
-**Example results (local run):**
-
-| Algorithm | Latency (ms/req) | Throughput (req/s) |
-|-----------|------------------|--------------------|
-| Token Bucket | 0.0002 | 4.4M |
-| Sliding Window | 0.0003 | 3.0M |
-| Leaky Bucket | 0.0002 | 6.6M |
-| Fixed Window | 0.0001 | 7.0M |
-
-**High load test (1000 users × 10 requests):** ~6.5M req/s on local run.
-
-**Run benchmarks:**
-```bash
-cd DistributedRateLimiter.Tests
-dotnet test --filter BenchmarkTests -v normal
-```
-
----
-## 🎬 What This Demonstrates
-
-In an interview, this codebase shows:
-
-1. **Systems thinking** – Understands distributed systems and trade-offs
-2. **Production mindfulness** – Error handling, monitoring, failover
-3. **Code quality** – SOLID, clean architecture, testability
-4. **Communication** – Decisions and trade-offs are documented
-5. **Pragmatism** – Uses industry standards (token bucket, Redis)
-6. **Honesty** – Calls out limitations (per-node limits, not global consensus)
-
----
 ## 📄 License
 
 MIT – Feel free to use for learning and projects.
