@@ -1,19 +1,23 @@
 using DistributedRateLimiter.RateLimiting.InMemory;
-using Microsoft.Extensions.Logging;
-using Moq;
+using DistributedRateLimiter.Configuration;
+using Microsoft.Extensions.Options;
 using Xunit;
 
 namespace DistributedRateLimiter.Tests;
 
 public class InMemoryTokenBucketTests
 {
-    private readonly Mock<ILogger<InMemoryTokenBucket>> _loggerMock;
     private readonly InMemoryTokenBucket _rateLimiter;
 
     public InMemoryTokenBucketTests()
     {
-        _loggerMock = new Mock<ILogger<InMemoryTokenBucket>>();
-        _rateLimiter = new InMemoryTokenBucket(_loggerMock.Object);
+        var options = Options.Create(new RateLimiterOptions
+        {
+            Capacity = 10,
+            RefillRate = 10,
+            RefillIntervalSeconds = 60
+        });
+        _rateLimiter = new InMemoryTokenBucket(options);
     }
 
     [Fact]

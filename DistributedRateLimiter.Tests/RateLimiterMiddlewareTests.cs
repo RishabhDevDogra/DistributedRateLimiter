@@ -1,6 +1,9 @@
 using DistributedRateLimiter.Middleware;
 using DistributedRateLimiter.RateLimiting.Interfaces;
+using DistributedRateLimiter.Configuration;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -8,6 +11,20 @@ namespace DistributedRateLimiter.Tests;
 
 public class RateLimiterMiddlewareTests
 {
+    private readonly Mock<ILogger<RateLimiterMiddleware>> _loggerMock;
+    private readonly IOptions<RateLimiterOptions> _options;
+
+    public RateLimiterMiddlewareTests()
+    {
+        _loggerMock = new Mock<ILogger<RateLimiterMiddleware>>();
+        _options = Options.Create(new RateLimiterOptions
+        {
+            Capacity = 10,
+            RefillRate = 10,
+            RefillIntervalSeconds = 60,
+            EnableMetrics = true
+        });
+    }
     [Fact]
     public async Task ShouldAddRateLimitHeaders_WhenAllowed()
     {
@@ -19,7 +36,7 @@ public class RateLimiterMiddlewareTests
             .Setup(x => x.AllowRequestAsync(It.IsAny<string>()))
             .ReturnsAsync(allowedResult);
 
-        var middleware = new RateLimiterMiddleware(ctx => Task.CompletedTask);
+        var middleware = new RateLimiterMiddleware(ctx => Task.CompletedTask, _loggerMock.Object, _options);
         var httpContext = new DefaultHttpContext();
 
         await middleware.Invoke(httpContext, rateLimiterMock.Object);
@@ -39,7 +56,7 @@ public class RateLimiterMiddlewareTests
             .Setup(x => x.AllowRequestAsync(It.IsAny<string>()))
             .ReturnsAsync(blockedResult);
 
-        var middleware = new RateLimiterMiddleware(ctx => Task.CompletedTask);
+        var middleware = new RateLimiterMiddleware(ctx => Task.CompletedTask, _loggerMock.Object, _options);
         var httpContext = new DefaultHttpContext();
 
         await middleware.Invoke(httpContext, rateLimiterMock.Object);
@@ -62,7 +79,7 @@ public class RateLimiterMiddlewareTests
         {
             nextCalled = true;
             return Task.CompletedTask;
-        });
+        }, _loggerMock.Object, _options);
 
         await middleware.Invoke(new DefaultHttpContext(), rateLimiterMock.Object);
 
