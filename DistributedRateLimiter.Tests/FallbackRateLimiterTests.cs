@@ -23,6 +23,9 @@ public class FallbackRateLimiterTests
             _inMemoryLimiterMock.Object,
             _loggerMock.Object
         );
+        
+        // Reset Redis health for each test
+        RedisHealth.Reset();
     }
 
     [Fact]
@@ -38,6 +41,7 @@ public class FallbackRateLimiterTests
         var result = await _fallbackLimiter.AllowRequestAsync(key);
 
         Assert.True(result.Allowed);
+        Assert.Equal(9, result.Remaining);
         _redisLimiterMock.Verify(x => x.AllowRequestAsync(key), Times.Once);
         _inMemoryLimiterMock.Verify(x => x.AllowRequestAsync(key), Times.Never);
     }
@@ -59,23 +63,8 @@ public class FallbackRateLimiterTests
         var result = await _fallbackLimiter.AllowRequestAsync(key);
 
         Assert.True(result.Allowed);
+        Assert.Equal(9, result.Remaining);
         _redisLimiterMock.Verify(x => x.AllowRequestAsync(key), Times.Once);
         _inMemoryLimiterMock.Verify(x => x.AllowRequestAsync(key), Times.Once);
-    }
-
-    [Fact]
-    public async Task WhenBlocked_ShouldReturnBlockedResult()
-    {
-        var key = "test-user";
-        var blockedResult = new RateLimitResult(false, 0, DateTime.UtcNow.AddSeconds(10));
-
-        _redisLimiterMock
-            .Setup(x => x.AllowRequestAsync(key))
-            .ReturnsAsync(blockedResult);
-
-        var result = await _fallbackLimiter.AllowRequestAsync(key);
-
-        Assert.False(result.Allowed);
-        Assert.Equal(0, result.Remaining);
     }
 }

@@ -58,6 +58,7 @@ public class RedisTokenBucket : IRateLimiter
 
                 local new_data = cjson.encode({tokens = tokens, last = now})
                 redis.call('SET', key, new_data)
+                redis.call('EXPIRE', key, 3600)
 
                 return {allowed, tokens}
             ";

@@ -2,6 +2,7 @@ using DistributedRateLimiter.RateLimiting.Interfaces;
 using DistributedRateLimiter.RateLimiting.Redis;
 using DistributedRateLimiter.RateLimiting.Fallback;
 using DistributedRateLimiter.RateLimiting.InMemory;
+using DistributedRateLimiter.RateLimiting.Algorithms;
 using DistributedRateLimiter.Middleware;
 using DistributedRateLimiter.Configuration;
 using DistributedRateLimiter.HealthChecks;
@@ -26,11 +27,26 @@ var connectionString = $"{redisConfig["ConnectionString"]}," +
                       $"syncTimeout={redisConfig["SyncTimeout"]}";
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
-    ConnectionMultiplexer.Connect(connectionString));
+{
+    try
+    {
+        return ConnectionMultiplexer.Connect(connectionString);
+    }
+    catch (Exception ex)
+    {
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to connect to Redis on startup. App will use in-memory limiter only");
+        // Return null - app will still function with in-memory limiter via fallback pattern
+        return null!;
+    }
+});
 
 // Concrete limiters
 builder.Services.AddSingleton<RedisTokenBucket>();
 builder.Services.AddSingleton<InMemoryTokenBucket>();
+builder.Services.AddSingleton<SlidingWindowLimiter>();
+builder.Services.AddSingleton<FixedWindowLimiter>();
+builder.Services.AddSingleton<LeakyBucketLimiter>();
 
 // Fallback limiter (Redis → InMemory)
 builder.Services.AddSingleton<IRateLimiter>(sp =>
@@ -128,18 +144,71 @@ app.UseMiddleware<RateLimiterMiddleware>();
 
 app.UseHttpsRedirection();
 
-// Rate-limited endpoint
-app.MapGet("/api/limited", () =>
+// Token Bucket endpoint (default rate limiter with Redis + fallback)
+app.MapGet("/api/limited/token-bucket", (IRateLimiter rateLimiter, HttpContext context) =>
 {
     return Results.Ok(new 
     { 
         message = "Request allowed 🚀",
+        algorithm = "Token Bucket",
+        description = "Smooth traffic with burst capacity. Tokens refill at constant rate (10/min). Best for: general purpose rate limiting.",
         timestamp = DateTime.UtcNow
     });
 })
-.WithName("RateLimitedEndpoint")
+.WithName("TokenBucketEndpoint")
 .WithTags("RateLimiter")
-.WithOpenApi(op => new(op) { Summary = "Rate limited endpoint - Protected by token bucket algorithm (10 requests per minute)" })
+.WithOpenApi(op => new(op) { Summary = "Token Bucket algorithm - Distributed (Redis with in-memory fallback) for burst-friendly limiting" })
+.Produces(200)
+.Produces(429);
+
+// Sliding Window endpoint (tracks exact request times)
+app.MapGet("/api/limited/sliding-window", (SlidingWindowLimiter limiter, HttpContext context) =>
+{
+    return Results.Ok(new 
+    { 
+        message = "Request allowed 🚀",
+        algorithm = "Sliding Window",
+        description = "Most accurate rate limiting. Tracks exact request times in a rolling window (10 requests per minute). Best for: strict compliance, precise quota enforcement.",
+        timestamp = DateTime.UtcNow
+    });
+})
+.WithName("SlidingWindowEndpoint")
+.WithTags("RateLimiter")
+.WithOpenApi(op => new(op) { Summary = "Sliding Window algorithm - Most accurate, tracks exact request timestamps in rolling window" })
+.Produces(200)
+.Produces(429);
+
+// Leaky Bucket endpoint (constant outflow rate)
+app.MapGet("/api/limited/leaky-bucket", (LeakyBucketLimiter limiter, HttpContext context) =>
+{
+    return Results.Ok(new 
+    { 
+        message = "Request allowed 🚀",
+        algorithm = "Leaky Bucket",
+        description = "Smooth traffic shaping with constant leak rate. Prevents bursts, maintains steady throughput (10 requests per minute). Best for: traffic shaping, protecting backend servers.",
+        timestamp = DateTime.UtcNow
+    });
+})
+.WithName("LeakyBucketEndpoint")
+.WithTags("RateLimiter")
+.WithOpenApi(op => new(op) { Summary = "Leaky Bucket algorithm - Traffic shaping with constant outflow rate for smooth throughput" })
+.Produces(200)
+.Produces(429);
+
+// Fixed Window endpoint (simple counter reset)
+app.MapGet("/api/limited/fixed-window", (FixedWindowLimiter limiter, HttpContext context) =>
+{
+    return Results.Ok(new 
+    { 
+        message = "Request allowed 🚀",
+        algorithm = "Fixed Window",
+        description = "Simplest and fastest algorithm. Counter resets at fixed intervals (10 requests per minute). Best for: lightweight use cases, high-throughput scenarios.",
+        timestamp = DateTime.UtcNow
+    });
+})
+.WithName("FixedWindowEndpoint")
+.WithTags("RateLimiter")
+.WithOpenApi(op => new(op) { Summary = "Fixed Window algorithm - Simple counter-based approach with periodic resets" })
 .Produces(200)
 .Produces(429);
 

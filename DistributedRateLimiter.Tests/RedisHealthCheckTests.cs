@@ -121,6 +121,6 @@ public class RedisHealthCheckTests
         var result = await _healthCheck.CheckHealthAsync(new HealthCheckContext());
 
         Assert.True(result.Data.ContainsKey("redis_failure_count"));
-        Assert.Equal(2, (long)result.Data["redis_failure_count"]);
+        Assert.Equal(2, (int)result.Data["redis_failure_count"]);
     }
 }

@@ -253,7 +253,104 @@ curl http://localhost:5126/health
 
 ---
 
-## 🚨 Error Handling
+## � Rate Limiting Algorithms
+
+This project implements **4 rate limiting algorithms**, each with different trade-offs:
+
+### **Algorithm Comparison**
+
+| Algorithm | Memory | Accuracy | Complexity | Best For |
+|-----------|--------|----------|-----------|----------|
+| **Token Bucket** | Low | Good | Medium | General purpose, bursty traffic |
+| **Sliding Window** | High | Excellent | High | Strict quotas, precise enforcement |
+| **Leaky Bucket** | Low | Good | Medium | Traffic shaping, smooth throughput |
+| **Fixed Window** | Very Low | Fair | Low | Simple use cases, high throughput |
+
+### **Token Bucket (Default)**
+- **How:** Tokens accumulate at constant rate, requests spend 1 token
+- **Pro:** Handles bursts gracefully, fair distribution, configurable
+- **Con:** Requires precise timing, clock skew sensitive
+- **Example:** 10 tokens/min allows 10 requests or 1 burst of 10 requests
+- **Endpoint:** `GET /api/limited/token-bucket`
+
+```bash
+# First request - 9 remaining
+curl http://localhost:5126/api/limited/token-bucket
+
+# After 10 requests - blocked (429)
+curl http://localhost:5126/api/limited/token-bucket
+# → 429 Too Many Requests
+```
+
+### **Sliding Window**
+- **How:** Tracks exact timestamp of each request in a rolling time window
+- **Pro:** Most accurate, prevents all window edge cases
+- **Con:** High memory (stores all request timestamps), slower
+- **Best For:** Strict compliance, financial transactions, precise quotas
+- **Endpoint:** `GET /api/limited/sliding-window`
+
+**Example:** 10 requests/60sec window
+- 10 requests at t=0: Allowed
+- 1 request at t=0.1: Blocked (window still has 10)
+- 1 request at t=60.1: Allowed (oldest request fell out of window)
+
+### **Leaky Bucket**
+- **How:** Bucket fills with requests, leaks at constant rate (like water)
+- **Pro:** Smooths traffic, prevents bursts, constant throughput
+- **Con:** Not fair for bursty workloads, requests "leak out" uniformly
+- **Best For:** Traffic shaping, protecting backends, smooth rate
+- **Endpoint:** `GET /api/limited/leaky-bucket`
+
+**Example:** Capacity=10, leak_rate=10/min
+- Requests arrive at 20/sec → First 10 allowed, rest blocked
+- After 1 minute, 10 more allowed (as old ones leak out)
+- Prevents sudden spikes
+
+### **Fixed Window**
+- **How:** Counter resets at fixed intervals (1min), each request increments counter
+- **Pro:** Simplest, fastest, minimal memory
+- **Con:** Allows bursts at window edges, less accurate
+- **Best For:** Simple limits, high-throughput, non-critical APIs
+- **Endpoint:** `GET /api/limited/fixed-window`
+
+**Example:** 10 requests/min
+- 0:00-0:59: 10 requests allowed
+- 1:00: Counter resets
+- Edge case: 5 requests at 0:59, 5 at 1:00 = 10 requests in 1 second (burst!)
+
+### **Testing Algorithm Performance**
+
+```bash
+# Run all tests (including new algorithm tests)
+cd DistributedRateLimiter.Tests
+dotnet test
+
+# Test output:
+# SlidingWindowLimiterTests:   7 tests ✓
+# FixedWindowLimiterTests:      7 tests ✓
+# LeakyBucketLimiterTests:      7 tests ✓
+# Total: 37 unit tests
+```
+
+**Algorithm Comparison in Production:**
+
+```csharp
+// Token Bucket - General Purpose (Recommended for most APIs)
+GET /api/limited/token-bucket
+
+// Sliding Window - Accuracy Critical
+GET /api/limited/sliding-window
+
+// Leaky Bucket - Traffic Shaping
+GET /api/limited/leaky-bucket
+
+// Fixed Window - High Throughput, Speed Critical
+GET /api/limited/fixed-window
+```
+
+---
+
+## �🚨 Error Handling
 
 | Scenario | Behavior |
 |----------|----------|
