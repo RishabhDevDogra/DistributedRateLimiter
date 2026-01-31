@@ -395,15 +395,15 @@ Tests/ (50+ tests)
 - **Single Redis node** - Bottleneck at ~50k req/sec (use Redis Cluster for scaling)
 - **Local state during failover** - Each instance independent, possible burst
 - **Clock sensitive** - Token bucket needs NTP sync
-- **Startup dependency** - If Redis down at start, uses in-memory only
+- **Startup dependency** - If Redis down at start, uses in-memory only and switches to redis as soon as redis is back 
 
 ## Future Enhancements
 
-- [ ] Redis Cluster for horizontal scaling
-- [ ] OpenTelemetry tracing integration
-- [ ] Prometheus metrics export
-- [ ] Per-API-key multi-tier limits
-- [ ] Per-endpoint custom limits
+-  Redis Cluster for horizontal scaling
+-  OpenTelemetry tracing integration
+-  Prometheus metrics export
+-  Per-API-key multi-tier limits
+-  Per-endpoint custom limits
 
 ## Technologies
 
@@ -440,6 +440,6 @@ done
 
 ---
 
-**Status:** Production-Ready | **Version:** 1.0 | **License:** MIT
+**License:** MIT
 
-Built for FAANG-level system design interviews and production deployment.  
+Built for system design interviews and production deployment.  
