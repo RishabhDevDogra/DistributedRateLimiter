@@ -30,7 +30,7 @@ X-RateLimit-* Headers + 200/429 Response
 
 ## Overview
 
-This production-grade system demonstrates FAANG-level distributed systems engineering:
+This production-grade system demonstrates distributed systems engineering:
 - **Four rate-limiting algorithms** (token bucket, fixed window, sliding window, leaky bucket) with speed/accuracy/memory tradeoffs
 - **Resilience patterns**: Redis primary → 5s circuit breaker → in-memory fallback (ConcurrentDictionary)
 - **Atomic Lua scripts** on Redis for race-condition-free updates at scale
@@ -440,6 +440,4 @@ done
 
 ---
 
-**License:** MIT
-
-Built for system design interviews and production deployment.  
+**Status:** Production-Ready | **Version:** 1.0 | **License:** MIT  
