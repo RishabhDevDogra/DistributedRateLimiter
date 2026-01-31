@@ -1,8 +1,6 @@
 # Distributed Rate Limiter
 
-**Enterprise-grade distributed rate limiting system for high-scale APIs**
-
-A production-ready implementation demonstrating distributed rate limiting at scale, built with .NET 8 and Redis. Features atomic operations, automatic failover, zero-downtime deployment patterns, and performance validated against 100+ request load tests.
+Enterprise-grade rate limiting system for high-scale APIs. Built with .NET 8 + Redis, featuring atomic Lua scripts, circuit breaker failover (99.99% uptime), and four production-tested algorithms.
 
 ## Overview
 
