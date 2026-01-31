@@ -76,11 +76,12 @@ Allowed?            ↓
 YES  NO            ↙  ↘
  ↓   ↓           YES  NO
 200 429            ↓   ↓
-    ┌────────────┐   200 429
-    │ Set Response│
-    │ Headers:   │
-    │ X-RateLimit-*
-    └────────────┘
+                  200 429
+    ┌──────────────┐
+    │ Set Response │
+    │ Headers:     │
+    │ X-RateLimit-*│
+    └──────────────┘
 ```
 
 ## Four Rate Limiting Algorithms
