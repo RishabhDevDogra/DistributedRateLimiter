@@ -2,6 +2,8 @@
 
 **High-performance distributed API rate limiter** in **.NET 8** achieving **10,000+ req/sec throughput** with **<1ms p99 latency**, **99.99% uptime SLA**, and **<500ms failover** during outages. Implements four rate-limiting algorithms with atomic Lua-scripted Redis operations and automatic in-memory fallback via circuit breaker pattern.
 
+## Swagger Endpoints
+<img width="1512" height="855" alt="APILimiter" src="https://github.com/user-attachments/assets/9eda3ed0-189d-495c-b33d-ceed3f3ac93d" />
 
 ## System Architecture
 
